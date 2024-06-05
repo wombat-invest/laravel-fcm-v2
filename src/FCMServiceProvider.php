@@ -33,7 +33,10 @@ class FCMServiceProvider extends ServiceProvider
     {
         foreach (config('fcm.channels') as $key => $channel) {
             Notification::extend($key, function () use ($channel) {
-                return new FCMChannel($channel['project'], $channel['service_account']);
+                return $this->app->makeWith(FCMChannel::class, [
+                    'project' => $channel['project'],
+                    'serviceAccount' => $channel['service_account']
+                ]);
             });
         }
     }
