@@ -6,6 +6,7 @@ use Google\Client;
 use Google\Exception;
 use Google\Service\FirebaseCloudMessaging;
 use GuzzleHttp\Exception\GuzzleException;
+use GuzzleHttp\Psr7\Response;
 use LaravelFCM\Events\FCMNotificationSent;
 
 class FCMChannel
@@ -24,13 +25,15 @@ class FCMChannel
      * @throws GuzzleException
      * @throws Exception
      * @throws \Exception
+     *
+     * @return array<int, Response>
      */
-    public function send($notifiable, $notification)
+    public function send($notifiable, $notification): array
     {
         $tokens = $notifiable->routeNotificationForFCM();
 
         if (empty($tokens)) {
-            return;
+            return [];
         }
 
         if (method_exists($notification, 'setNotifiable')) {
@@ -55,6 +58,9 @@ class FCMChannel
         if (method_exists($notification, 'toFCM')) {
             $message['message']['notification'] = $notification->toFCM();
         }
+        if (method_exists($notification, 'toApnsHeaders')) {
+            $message['message']['apns']['headers'] = $notification->toApnsHeaders();
+        }
         if (method_exists($notification, 'toAPS')) {
             $message['message']['apns']['payload']['aps'] = $notification->toAPS();
         }
@@ -72,12 +78,17 @@ class FCMChannel
             $tokens = [$tokens];
         }
 
+        $responses = [];
+
         foreach ($tokens as $token) {
             $message['message']['token'] = $token;
 
             $response = $httpClient->post("https://fcm.googleapis.com/v1/projects/$this->project/messages:send", ['json' => $message]);
+            $responses[] = $response;
 
             event(new FCMNotificationSent($notifiable, $notification, $message, $response));
         }
+
+        return $responses;
     }
 }
