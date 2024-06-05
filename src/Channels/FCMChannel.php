@@ -33,9 +33,14 @@ class FCMChannel
             return;
         }
 
+        if (method_exists($notification, 'setNotifiable')) {
+            $notification->setNotifiable($notifiable);
+        }
+
         $client = new Client();
 
-        $serviceAccount = json_decode(file_get_contents(config_path($this->serviceAccount)), true);
+        $serviceAccount = json_decode($this->serviceAccount, true)
+            ?: json_decode(file_get_contents(config_path($this->serviceAccount)), true);
 
         $client->setAuthConfig($serviceAccount);
 
